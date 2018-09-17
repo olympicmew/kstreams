@@ -39,7 +39,7 @@ class Song(object):
     def __init__(self, db, songid):
         self.id = songid
         self._info = db._songs[self.id]
-        self._dbpath = os.path.join(db.path, self.id)
+        self._dbpath = os.path.join(db.path, f'{self.id}.pkl')
 
     @property
     def title(self):
@@ -165,7 +165,7 @@ class SongDB(collections.abc.Mapping):
                                     'is_tracking': True,
                                     'credits': {}}
 
-        dbpath = os.path.join(self.path, songinfo.id)
+        dbpath = os.path.join(self.path, f'{songinfo.id}.pkl')
         pd.Series(name=songinfo.title).to_pickle(dbpath)
         logging.debug('Added to database (%s by %s)',
                       songinfo.title, songinfo.artist)
