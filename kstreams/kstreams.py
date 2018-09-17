@@ -93,10 +93,8 @@ class Song(object):
         logging.debug('Fetching completed: %s by %s',
                       self.title, self.artist)
 
-    @property
-    def plays(self):
-        # retains the interface with the hourly gain
-        # TODO a function that gives out the raw data
+    def get_plays(self):
+        # turns the raw data into a neat hourly overview of plays
         data = pd.read_pickle(self._dbpath)
         if data.empty:
             return data
@@ -108,7 +106,11 @@ class Song(object):
             return data.diff().shift(-1, freq='h').to_period()
 
     def _dbappend(self, record):
-        self.plays.append(record).to_pickle(self._dbpath)
+        self._db.append(record).to_pickle(self._dbpath)
+
+    @property
+    def _db(self):
+        return pd.read_pickle(self._dbpath)
 
 
 class SongDB(collections.abc.Mapping):
@@ -147,7 +149,7 @@ class SongDB(collections.abc.Mapping):
         # the last n elements
         perf = {}
         for song in self.values():
-            streams = song.plays.to_timestamp().last('10D').sum()
+            streams = song.get_plays().to_timestamp().last('10D').sum()
             perf[song.id] = streams
         for songid in sorted(perf, key=perf.get)[:n]:
             self[songid].is_tracking = False
@@ -215,9 +217,8 @@ class SongDB(collections.abc.Mapping):
                 is_korean, is_title = scrape_requirements(markup, song['id'])
             logging.debug('Info fetched for assessment (%s by %s)',
                           song['title'], song['artist'])
-            days_since_rel = (arrow.utcnow() - rel_date) / timedelta(days=1)
 
-            if is_korean and is_title and days_since_rel < 100999:
+            if is_korean and is_title:
                 tracking += 1
                 songinfo = SongInfo(song['id'],
                                     song['title'],
