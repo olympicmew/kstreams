@@ -25,7 +25,7 @@ def scrape_top200():
     with requests.Session() as session:
         for n in range(1, 5):
             params = {'ditc': 'D', 'rtm': 'Y', 'pg': n}
-            page = session.get(TOP200URL, params)
+            page = session.get(TOP200URL, params=params)
             soup = BeautifulSoup(page.text, 'lxml')
             entries = soup.find('tbody').find_all('tr')
             for entry in entries:
