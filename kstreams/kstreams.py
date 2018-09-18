@@ -248,9 +248,8 @@ class SongDB(collections.abc.Collection):
         for songinfo in to_add:
             self.add_from_songinfo(songinfo)
         logging.debug('%d songs: added to the database', len(to_add))
-        # self.save()
 
-    def fetch(self, current_min):
+    def fetch(self, current_min=arrow.utcnow().minute):
         logging.debug('Fetching started for minute %d', current_min)
         # TODO change the order of actions so that I can log whether
         # anything was fetched this minute or not
