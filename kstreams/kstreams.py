@@ -154,11 +154,11 @@ class SongDB(collections.abc.Collection):
     def prune(self, n):
         # rank the song ids by streams in the last 10 days and stop tracking
         # the last n elements
-        perf = {}
+        performance = {}
         for song in self:
             streams = song.get_plays().to_timestamp().last('10D').mean()
-            perf[song.id] = streams
-        for songid in sorted(perf, key=perf.get)[:n]:
+            performance[song.id] = streams
+        for songid in sorted(performance, key=performance.get)[:n]:
             self[songid].is_tracking = False
         logging.debug('Disabled tracking of %d songs', n)
 
