@@ -6,22 +6,24 @@ Created on Fri Sep 14 20:59:41 2018
 @author: olympicmew
 """
 
-from urllib.request import urlopen
-from bs4 import BeautifulSoup
-from .utils import SongInfo
-import arrow
-import re
 import logging
+import re
+
+import arrow
+import requests
+from bs4 import BeautifulSoup
+
+from .utils import SongInfo
+from .kstreams import SONGURL, ALBUMURL
 #logging.basicConfig(level=logging.DEBUG)
 
 
 def scrape_top200():
-    url = 'http://www.genie.co.kr/chart/top200?ditc=D&rtm=Y&pg={}'
     songs = []
     for n in range(1, 5):
-        page = urlopen(url.format(n))
-        markup = page.read().decode()
-        soup = BeautifulSoup(markup, 'lxml')
+        params = {'ditc': 'D', 'rtm': 'Y', 'pg': n}
+        page = requests.get('http://www.genie.co.kr/chart/top200', params)
+        soup = BeautifulSoup(page.text, 'lxml')
         entries = soup.find('tbody').find_all('tr')
         for entry in entries:
             songid = entry.get('songid')
@@ -94,10 +96,9 @@ def scrape_credits(markup):
 
 
 def scrape_songinfo(songid):
-    from .kstreams import SONGURL, ALBUMURL
-    page = urlopen(SONGURL.format(songid))
-    markup = page.read().decode()
-    soup = BeautifulSoup(markup, 'lxml')
+    session = requests.Session()
+    page = session.get(SONGURL, {'xgnm': songid})
+    soup = BeautifulSoup(page.text, 'lxml')
     title = soup.find(class_='name').get_text().strip()
 
     def find_artist(tag):
@@ -109,8 +110,8 @@ def scrape_songinfo(songid):
         return tag.has_attr('onclick') and 'albumInfo' in tag.get('onclick')
     albumid = soup.find(find_albumid).get('onclick')
     albumid = re.compile(r"'([0-9]+)'").search(albumid).group(1)
-    albumpage = urlopen(ALBUMURL.format(albumid))
-    rel_date = scrape_releasedate(albumpage.read().decode())
+    albumpage = session.get(ALBUMURL, {'axnm': albumid})
+    rel_date = scrape_releasedate(albumpage.text)
 
     return SongInfo(songid, title, artist, rel_date.for_json())
 

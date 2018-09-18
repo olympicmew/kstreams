@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from collections import namedtuple
-SongInfo = namedtuple('SongInfo', ['id', 'title', 'artist', 'rel_date'])
+SongInfo = namedtuple('SongInfo', ['id', 'title', 'artist', 'release_date'])
 
 
 def remove_duplicates(s):

@@ -11,10 +11,10 @@ import json
 import logging
 import os
 import random
-from urllib.request import urlopen
 
 import arrow
 import pandas as pd
+import requests
 
 from .scrapers import (
     scrape_credits,
@@ -32,8 +32,8 @@ from .utils import (
 
 logging.basicConfig(level=logging.DEBUG)
 
-SONGURL = 'http://www.genie.co.kr/detail/songInfo?xgnm={}'
-ALBUMURL = 'http://www.genie.co.kr/detail/albumInfo?axnm={}'
+SONGURL = 'http://www.genie.co.kr/detail/songInfo'
+ALBUMURL = 'http://www.genie.co.kr/detail/albumInfo'
 
 
 class Song(object):
@@ -62,22 +62,27 @@ class Song(object):
 
     @property
     def minute(self):
+        """The minute at which the song will be fetched by the parent database."""
         if 'minute' not in self._info:
             random.seed(self.id)
             self._info['minute'] = random.randrange(1, 60)
         return self._info['minute']
 
-    def fetch(self, fetch_credits=False):
-
+    def fetch(self):
+        """Fetches the current total plays count from Genie and stores it."""
         # scraping code
-        url = SONGURL.format(self.id)
-        with urlopen(url) as page:
-            markup = page.read().decode()
-            if fetch_credits:
-                self.credits = scrape_credits(markup)
-            tstamp = arrow.get(page.getheader('Date'),
-                               'ddd, DD MMM YYYY HH:mm:ss ZZZ')
-            streams = scrape_streams(markup)
+        try:
+            page = requests.get(SONGURL, {'xgnm': self.id})
+        except (requests.ConnectionError, requests.HTTPError):
+            logging.error('Request to genie.co.kr for song ID %s failed',
+                          self.id)
+            return
+        markup = page.text
+        if not self.credits:
+            self.credits = scrape_credits(markup)
+        tstamp = arrow.get(page.headers.get('date'),
+                           'ddd, DD MMM YYYY HH:mm:ss ZZZ')
+        streams = scrape_streams(markup)
 
         # prepare the record to be stored
         record = pd.Series(streams, [pd.to_datetime(tstamp.datetime)],
@@ -88,7 +93,18 @@ class Song(object):
                       self.title, self.artist)
 
     def get_plays(self):
-        # turns the raw data into a neat hourly overview of plays
+        """Returns a table of hourly streaming data.
+
+        Returns:
+            A Pandas Series object with a hourly PeriodIndex. The values represent
+            the number of plays in the hour period. A record such as
+
+            2018-09-18 11:00    3017
+
+            means that the song has been played 3017 times in the time period from
+            11:00 to 11:59 of September 18, 2018. If not enough data have been
+            fetched to return such a table an empty Series object will be returned.
+        """
         data = self._db
         if data.empty:
             return data
@@ -111,7 +127,21 @@ class Song(object):
 class SongDB(collections.abc.Collection):
 
     def __init__(self, path):
+        """Returns a new SongDB object.
+
+        Args:
+            path: the path to the directory where the file structure of the
+                database is located. Use init_db() to initialize a new database.
+
+        Returns:
+            A SongDB instance pointing to the database found in the path.
+
+        Raises:
+            FileNotFoundError: a file or directory required by the database has
+                not been found.
+        """
         self.path = path
+        self.quota = 3540  # TODO make it configurable in the settings
         self._jsonpath = os.path.join(self.path, 'songs.json')
         self._blacklistpath = os.path.join(self.path, 'blacklist.json')
         self._songs = {}
@@ -134,37 +164,54 @@ class SongDB(collections.abc.Collection):
         return item in self._songs
 
     def is_tracking(self, songid):
+        """Tells if the provided song ID is currently being tracked."""
         try:
             return self[songid].is_tracking
         except KeyError:
             return False
 
     @property
-    def quota(self):
-        return 3540  # TODO make it configurable in the settings
-
-    @property
     def tracking(self):
+        """Returns the number of songs currently being tracked."""
         return len([song for song in self if song.is_tracking])
 
     def prune(self, n):
-        # rank the song ids by streams in the last 10 days and stop tracking
-        # the last n elements
+        """Stops n currently tracking songs from being tracked.
+
+        The songs are chosen based on their streaming performance.
+        Specifically, the n songs with the least average plays/hour in the last
+        10 days will stop being tracked. The are not removed from the database,
+        and their tracking can be resumed if they are found again in the hourly
+        Top 200 in a future call to SongDB.update().
+
+        Args:
+            n: the number of songs to be pruned.
+        """
+        # rank the song ids by streams in the last 10 days
         performance = {}
         for song in self:
             streams = song.get_plays().to_timestamp().last('10D').mean()
             performance[song.id] = streams
         for songid in sorted(performance, key=performance.get)[:n]:
             self[songid].is_tracking = False
-        logging.debug('Disabled tracking of %d songs', n)
+        logging.debug('Disabled tracking of %d songs', min(n, performance))
 
     def add_from_songid(self, songid):
+        """Fetches metadata for the song ID provided and adds it to the database."""
         songinfo = scrape_songinfo(songid)
         self.add_from_songinfo(songinfo)
 
     def add_from_songinfo(self, songinfo):
+        """Adds to the database the song with the metadata provided.
+
+        Args:
+            songinfo: a named tuple with fields 'id', 'title', 'artist' and
+                'release_date', or an equivalent object with the appropriate
+                attributes.
+        """
         self._songs[songinfo.id] = {'title': songinfo.title,
                                     'artist': songinfo.artist,
+                                    'release_date': songinfo.release_date,
                                     'is_tracking': True,
                                     'credits': {}}
 
@@ -174,6 +221,12 @@ class SongDB(collections.abc.Collection):
                       songinfo.title, songinfo.artist)
 
     def load(self):
+        """Loads the song metadata and the blacklist in memory.
+
+        This is called by the SongDB constructor, but can also be called later
+        if one wants to revert the state of the SongDB object to what it was
+        after the last call to SongDB.save().
+        """
         with open(self._jsonpath, 'r') as f:
             self._songs = json.load(f)
         with open(self._blacklistpath, 'r') as f:
@@ -181,6 +234,10 @@ class SongDB(collections.abc.Collection):
         logging.debug('Song metadata DB and blacklist loaded')
 
     def save(self):  # TODO make JSON formatting configurable
+        """Saves the current state of the song metadata and the blacklist.
+
+        This is generally called after a call to SongDB.update() or fetch().
+        """
         with open(self._jsonpath, 'w') as f:
             json.dump(self._songs, f)
         with open(self._blacklistpath, 'w') as f:
@@ -188,6 +245,19 @@ class SongDB(collections.abc.Collection):
         logging.debug('Changes to the DB in memory saved on disk')
 
     def update(self):  # TODO change the order of stuff for better logging
+        """Looks at the hourly Genie Top 200 and adds new songs to the database.
+
+        In order to be added by this method, a song must satisfy the following
+        criteria:
+
+        - it must be tagged as '가요' in its genre field. This is the main tag
+        for Korean-language songs, with the exception of OSTs.
+
+        - it must be tagged as a title track in the album it's part of.
+
+        Songs that don't meet these requirements, or have not charted, can be
+        tracked by calling the add_from_songid() or add_from_songinfo methods.
+        """
         tracking = self.tracking
         resume_tracking = []
         to_add = []
@@ -213,11 +283,15 @@ class SongDB(collections.abc.Collection):
                                   song['title'], song['artist'])
                     continue
 
-            url = ALBUMURL.format(song['album_id'])
-            with urlopen(url) as page:
-                markup = page.read().decode()
-                rel_date = scrape_releasedate(markup)
-                is_korean, is_title = scrape_requirements(markup, song['id'])
+            try:
+                page = requests.get(ALBUMURL, {'axnm': song['album_id']})
+            except (requests.ConnectionError, requests.HTTPError):
+                logging.error('Request to genie.co.kr for album ID %s failed. '
+                              'Song ID %s will not be added',
+                              song['album_id'], song['id'])
+                continue
+            release_date = scrape_releasedate(page.text)
+            is_korean, is_title = scrape_requirements(page.text, song['id'])
             logging.debug('Info fetched for assessment (%s by %s)',
                           song['title'], song['artist'])
 
@@ -226,7 +300,7 @@ class SongDB(collections.abc.Collection):
                 songinfo = SongInfo(song['id'],
                                     song['title'],
                                     song['artist'],
-                                    rel_date.for_json())
+                                    release_date.for_json())
                 to_add.append(songinfo)
             else:
                 self.blacklist.append(song['id'])
@@ -245,24 +319,39 @@ class SongDB(collections.abc.Collection):
             self.add_from_songinfo(songinfo)
         logging.debug('%d songs: added to the database', len(to_add))
 
-    def fetch(self, current_min=arrow.utcnow().minute):
-        logging.debug('Fetching started for minute %d', current_min)
+    def fetch(self, minute=arrow.utcnow().minute):
+        """Calls Song.fetch() for the songs scheduled for the given minute.
+
+        Args:
+            minute: the minute for which the fetching must be performed. All songs
+                that have the given minute in their minute attribute will be
+                fetched. The argument is optional, and it defaults to the current
+                minute as provided by the system clock.
+        """
+        logging.debug('Fetching started for minute %d', minute)
         # TODO change the order of actions so that I can log whether
         # anything was fetched this minute or not
         for song in self:
-            if song.is_tracking and song.minute == current_min:
-                if not song.credits:
-                    song.fetch(fetch_credits=True)
-                else:
-                    song.fetch()
+            if song.is_tracking and song.minute == minute:
+                song.fetch()
 
 
 def init_db(path):
+    """Initializes a new database at the given path.
+
+    Args:
+        path: the path to the directory where the file structure of the new
+            database will be created. If the directory doesn't exist, it will be
+            created.
+    Returns:
+        a SongDB instance pointing to the newly created database.
+    """
     jsonpath = os.path.join(path, 'songs.json')
     blacklistpath = os.path.join(path, 'blacklist.json')
     if not os.path.isdir(path):
-        os.mkdir(path)
+        os.makedirs(path)
     with open(jsonpath, 'w') as f:
         json.dump({}, f)
     with open(blacklistpath, 'w') as f:
         json.dump([], f)
+    return SongDB(path)
