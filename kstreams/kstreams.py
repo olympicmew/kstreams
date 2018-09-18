@@ -61,11 +61,11 @@ class Song(object):
         self._info['credits'] = value
 
     @property
-    def fetch_min(self):
-        if 'fetch_min' not in self._info:
+    def minute(self):
+        if 'minute' not in self._info:
             random.seed(self.id)
-            self._info['fetch_min'] = random.randrange(1, 60)
-        return self._info['fetch_min']
+            self._info['minute'] = random.randrange(1, 60)
+        return self._info['minute']
 
     def fetch(self, fetch_credits=False):
 
@@ -250,7 +250,7 @@ class SongDB(collections.abc.Collection):
         # TODO change the order of actions so that I can log whether
         # anything was fetched this minute or not
         for song in self:
-            if song.is_tracking and song.fetch_min == current_min:
+            if song.is_tracking and song.minute == current_min:
                 if not song.credits:
                     song.fetch(fetch_credits=True)
                 else:
