@@ -156,7 +156,7 @@ class SongDB(collections.abc.Collection):
         # the last n elements
         perf = {}
         for song in self:
-            streams = song.get_plays().to_timestamp().last('10D').sum()
+            streams = song.get_plays().to_timestamp().last('10D').mean()
             perf[song.id] = streams
         for songid in sorted(perf, key=perf.get)[:n]:
             self[songid].is_tracking = False
