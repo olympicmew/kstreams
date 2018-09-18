@@ -340,7 +340,7 @@ def init_db(path):
     Args:
         path: the path to the directory where the file structure of the new
             database will be created. If the directory doesn't exist, it will be
-            created.
+            created. It will also overwrite an existing database at the location.
     Returns:
         a SongDB instance pointing to the newly created database.
     """
