@@ -14,15 +14,17 @@ import requests
 from bs4 import BeautifulSoup
 
 from .utils import SongInfo
-from .kstreams import SONGURL, ALBUMURL
-#logging.basicConfig(level=logging.DEBUG)
+
+TOP200URL = 'http://www.genie.co.kr/chart/top200'
+SONGURL = 'http://www.genie.co.kr/detail/songInfo'
+ALBUMURL = 'http://www.genie.co.kr/detail/albumInfo'
 
 
 def scrape_top200():
     songs = []
     for n in range(1, 5):
         params = {'ditc': 'D', 'rtm': 'Y', 'pg': n}
-        page = requests.get('http://www.genie.co.kr/chart/top200', params)
+        page = requests.get(TOP200URL, params)
         soup = BeautifulSoup(page.text, 'lxml')
         entries = soup.find('tbody').find_all('tr')
         for entry in entries:
@@ -96,22 +98,24 @@ def scrape_credits(markup):
 
 
 def scrape_songinfo(songid):
-    session = requests.Session()
-    page = session.get(SONGURL, {'xgnm': songid})
-    soup = BeautifulSoup(page.text, 'lxml')
-    title = soup.find(class_='name').get_text().strip()
+    with requests.Session() as session:
+        page = session.get(SONGURL, {'xgnm': songid})
+        soup = BeautifulSoup(page.text, 'lxml')
+        title = soup.find(class_='name').get_text().strip()
 
-    def find_artist(tag):
-        return tag.has_attr('onclick') and 'artistInfo' in tag.get('onclick')
-    artist = soup.find(find_artist)
-    artist = artist.get_text().strip()
+        def find_artist(tag):
+            return (tag.has_attr('onclick') and
+                    'artistInfo' in tag.get('onclick'))
+        artist = soup.find(find_artist)
+        artist = artist.get_text().strip()
 
-    def find_albumid(tag):
-        return tag.has_attr('onclick') and 'albumInfo' in tag.get('onclick')
-    albumid = soup.find(find_albumid).get('onclick')
-    albumid = re.compile(r"'([0-9]+)'").search(albumid).group(1)
-    albumpage = session.get(ALBUMURL, {'axnm': albumid})
-    rel_date = scrape_releasedate(albumpage.text)
+        def find_albumid(tag):
+            return (tag.has_attr('onclick') and
+                    'albumInfo' in tag.get('onclick'))
+        albumid = soup.find(find_albumid).get('onclick')
+        albumid = re.compile(r"'([0-9]+)'").search(albumid).group(1)
+        albumpage = session.get(ALBUMURL, {'axnm': albumid})
+        rel_date = scrape_releasedate(albumpage.text)
 
     return SongInfo(songid, title, artist, rel_date.for_json())
 

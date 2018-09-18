@@ -22,7 +22,9 @@ from .scrapers import (
     scrape_requirements,
     scrape_songinfo,
     scrape_streams,
-    scrape_top200
+    scrape_top200,
+    SONGURL,
+    ALBUMURL
 )
 from .utils import (
     SongInfo,
@@ -31,9 +33,6 @@ from .utils import (
 )
 
 logging.basicConfig(level=logging.DEBUG)
-
-SONGURL = 'http://www.genie.co.kr/detail/songInfo'
-ALBUMURL = 'http://www.genie.co.kr/detail/albumInfo'
 
 
 class Song(object):
@@ -262,50 +261,49 @@ class SongDB(collections.abc.Collection):
         resume_tracking = []
         to_add = []
 
-        for song in scrape_top200():
-
-            # skip blacklisted songs
-            if song['id'] in self.blacklist:
-                logging.debug('Skipped: blacklisted (%s by %s)',
-                              song['title'], song['artist'])
-                continue
-
-            # catch songs already in the db
-            if song['id'] in self:
-                if self.is_tracking(song['id']):
-                    logging.debug('Skipped: already tracking (%s by %s)',
+        with requests.Session() as session:
+            for song in scrape_top200():
+                # skip blacklisted songs
+                if song['id'] in self.blacklist:
+                    logging.debug('Skipped: blacklisted (%s by %s)',
                                   song['title'], song['artist'])
                     continue
-                else:
+                # catch songs already in the db
+                if song['id'] in self:
+                    if self.is_tracking(song['id']):
+                        logging.debug('Skipped: already tracking (%s by %s)',
+                                      song['title'], song['artist'])
+                        continue
+                    else:
+                        tracking += 1
+                        resume_tracking.append(song['id'])
+                        logging.debug('Tracking will be resumed (%s by %s)',
+                                      song['title'], song['artist'])
+                        continue
+                # fetch release date and requirements
+                try:
+                    page = session.get(ALBUMURL, {'axnm': song['album_id']})
+                except (requests.ConnectionError, requests.HTTPError):
+                    logging.error('Request to genie.co.kr for album ID %s failed. '
+                                  'Song ID %s will not be added',
+                                  song['album_id'], song['id'])
+                    continue
+                release_date = scrape_releasedate(page.text)
+                is_korean, is_title = scrape_requirements(page.text, song['id'])
+                logging.debug('Info fetched for assessment (%s by %s)',
+                              song['title'], song['artist'])
+                # check requirements and add song
+                if is_korean and is_title:
                     tracking += 1
-                    resume_tracking.append(song['id'])
-                    logging.debug('Tracking will be resumed (%s by %s)',
+                    songinfo = SongInfo(song['id'],
+                                        song['title'],
+                                        song['artist'],
+                                        release_date.for_json())
+                    to_add.append(songinfo)
+                else:
+                    self.blacklist.append(song['id'])
+                    logging.debug('Blacklisted (%s by %s)',
                                   song['title'], song['artist'])
-                    continue
-
-            try:
-                page = requests.get(ALBUMURL, {'axnm': song['album_id']})
-            except (requests.ConnectionError, requests.HTTPError):
-                logging.error('Request to genie.co.kr for album ID %s failed. '
-                              'Song ID %s will not be added',
-                              song['album_id'], song['id'])
-                continue
-            release_date = scrape_releasedate(page.text)
-            is_korean, is_title = scrape_requirements(page.text, song['id'])
-            logging.debug('Info fetched for assessment (%s by %s)',
-                          song['title'], song['artist'])
-
-            if is_korean and is_title:
-                tracking += 1
-                songinfo = SongInfo(song['id'],
-                                    song['title'],
-                                    song['artist'],
-                                    release_date.for_json())
-                to_add.append(songinfo)
-            else:
-                self.blacklist.append(song['id'])
-                logging.debug('Blacklisted (%s by %s)',
-                              song['title'], song['artist'])
 
         # check if quota is exceeded with new songs and make space
         if tracking > self.quota:
