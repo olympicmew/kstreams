@@ -282,7 +282,8 @@ class SongDB(collections.abc.Collection):
                         continue
                 # fetch release date and requirements
                 try:
-                    page = session.get(ALBUMURL, {'axnm': song['album_id']})
+                    page = session.get(ALBUMURL,
+                                       params={'axnm': song['album_id']})
                 except (requests.ConnectionError, requests.HTTPError):
                     logging.error('Request to genie.co.kr for album ID %s failed. '
                                   'Song ID %s will not be added',

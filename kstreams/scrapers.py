@@ -22,9 +22,10 @@ ALBUMURL = 'http://www.genie.co.kr/detail/albumInfo'
 
 def scrape_top200():
     songs = []
+    with requests.Session() as session:
     for n in range(1, 5):
         params = {'ditc': 'D', 'rtm': 'Y', 'pg': n}
-        page = requests.get(TOP200URL, params)
+        page = session.get(TOP200URL, params)
         soup = BeautifulSoup(page.text, 'lxml')
         entries = soup.find('tbody').find_all('tr')
         for entry in entries:
@@ -99,7 +100,7 @@ def scrape_credits(markup):
 
 def scrape_songinfo(songid):
     with requests.Session() as session:
-        page = session.get(SONGURL, {'xgnm': songid})
+        page = session.get(SONGURL, params={'xgnm': songid})
         soup = BeautifulSoup(page.text, 'lxml')
         title = soup.find(class_='name').get_text().strip()
 
@@ -114,7 +115,7 @@ def scrape_songinfo(songid):
                     'albumInfo' in tag.get('onclick'))
         albumid = soup.find(find_albumid).get('onclick')
         albumid = re.compile(r"'([0-9]+)'").search(albumid).group(1)
-        albumpage = session.get(ALBUMURL, {'axnm': albumid})
+        albumpage = session.get(ALBUMURL, params={'axnm': albumid})
         rel_date = scrape_releasedate(albumpage.text)
 
     return SongInfo(songid, title, artist, rel_date.for_json())
