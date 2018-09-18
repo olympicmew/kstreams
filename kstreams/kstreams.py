@@ -239,9 +239,9 @@ class SongDB(collections.abc.Collection):
         This is generally called after a call to SongDB.update() or fetch().
         """
         with open(self._jsonpath, 'w') as f:
-            json.dump(self._songs, f)
+            json.dump(self._songs, f, indent=4, ensure_ascii=False)
         with open(self._blacklistpath, 'w') as f:
-            json.dump(self.blacklist, f)
+            json.dump(self.blacklist, f, indent=0)
         logging.debug('Changes to the DB in memory saved on disk')
 
     def update(self):  # TODO change the order of stuff for better logging
