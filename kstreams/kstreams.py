@@ -28,7 +28,7 @@ from .scrapers import (
     scrape_songinfo
 )
 
-logging.basicConfig(filename='kstreams-test.log', level=logging.DEBUG)
+logging.basicConfig(level=logging.DEBUG)
 
 SONGURL = 'http://www.genie.co.kr/detail/songInfo?xgnm={}'
 ALBUMURL = 'http://www.genie.co.kr/detail/albumInfo?axnm={}'
@@ -112,12 +112,13 @@ class Song(object):
         return pd.read_pickle(self._dbpath)
 
 
-class SongDB(collections.abc.Mapping):
+class SongDB(collections.abc.Collection):
 
     def __init__(self, path):
         self.path = path
         self._jsonpath = os.path.join(self.path, 'songs.json')
         self._blacklistpath = os.path.join(self.path, 'blacklist.json')
+        self._songs = {}
         self._cache = {}
         self.load()
 
@@ -127,13 +128,20 @@ class SongDB(collections.abc.Mapping):
         return self._cache[key]
 
     def __iter__(self):
-        return iter(self._songs)
+        for songid in self._songs:
+            yield self[songid]
 
     def __len__(self):
         return len(self._songs)
 
-    def is_tracking(self, id):
-        return self[id].is_tracking
+    def __contains__(self, item):
+        return item in self._songs
+
+    def is_tracking(self, songid):
+        try:
+            return self[songid].is_tracking
+        except KeyError:
+            return False
 
     @property
     def quota(self):
@@ -141,13 +149,13 @@ class SongDB(collections.abc.Mapping):
 
     @property
     def tracking(self):
-        return len([song for song in self.values() if song.is_tracking])
+        return len([song for song in self if song.is_tracking])
 
     def prune(self, n):
         # rank the song ids by streams in the last 10 days and stop tracking
         # the last n elements
         perf = {}
-        for song in self.values():
+        for song in self:
             streams = song.get_plays().to_timestamp().last('10D').sum()
             perf[song.id] = streams
         for songid in sorted(perf, key=perf.get)[:n]:
@@ -246,7 +254,7 @@ class SongDB(collections.abc.Mapping):
         logging.debug('Fetching started for minute %d', current_min)
         # TODO change the order of actions so that I can log whether
         # anything was fetched this minute or not
-        for song in self.values():
+        for song in self:
             if song.is_tracking and song.fetch_min == current_min:
                 if not song.credits:
                     song.fetch(fetch_credits=True)

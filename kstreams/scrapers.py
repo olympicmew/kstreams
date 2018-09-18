@@ -12,7 +12,7 @@ from .utils import SongInfo
 import arrow
 import re
 import logging
-logging.basicConfig(filename='kstreams-test.log', level=logging.DEBUG)
+#logging.basicConfig(level=logging.DEBUG)
 
 
 def scrape_top200():
