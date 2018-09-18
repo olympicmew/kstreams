@@ -11,7 +11,6 @@ import os
 import json
 import collections.abc
 import pandas as pd
-from datetime import timedelta
 import arrow
 from urllib.request import urlopen
 import logging
@@ -76,7 +75,6 @@ class Song(object):
 
         # scraping code
         url = SONGURL.format(self.id)
-        # TODO logging
         with urlopen(url) as page:
             markup = page.read().decode()
             if fetch_credits:
