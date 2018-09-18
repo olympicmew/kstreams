@@ -71,12 +71,25 @@ def scrape_streams(markup):
 
 def scrape_credits(markup):
     soup = BeautifulSoup(markup, "lxml")
-    lyr = soup.find(alt='작사가').parent.find_next_sibling(class_='value')
-    comp = soup.find(alt='작곡가').parent.find_next_sibling(class_='value')
-    arr = soup.find(alt='편곡자').parent.find_next_sibling(class_='value')
-    lyr = [s.strip() for s in lyr.get_text().split(',')]
-    comp = [s.strip() for s in comp.get_text().split(',')]
-    arr = [s.strip() for s in arr.get_text().split(',')]
+
+    try:
+        lyr = soup.find(alt='작사가').parent.find_next_sibling(class_='value')
+        lyr = [s.strip() for s in lyr.get_text().split(',')]
+    except AttributeError:
+        lyr = []
+
+    try:
+        comp = soup.find(alt='작곡가').parent.find_next_sibling(class_='value')
+        comp = [s.strip() for s in comp.get_text().split(',')]
+    except AttributeError:
+        comp = []
+
+    try:
+        arr = soup.find(alt='편곡자').parent.find_next_sibling(class_='value')
+        arr = [s.strip() for s in arr.get_text().split(',')]
+    except AttributeError:
+        arr = []
+
     return {'lyrics': lyr, 'composition': comp, 'arrangement': arr}
 
 
