@@ -6,26 +6,28 @@ Created on Thu Sep 13 17:41:51 2018
 @author: olympicmew
 """
 
-import random
-import os
-import json
 import collections.abc
-import pandas as pd
-import arrow
-from urllib.request import urlopen
+import json
 import logging
-from .utils import (
-    SongInfo,
-    remove_duplicates,
-    interpolate
-)
+import os
+import random
+from urllib.request import urlopen
+
+import arrow
+import pandas as pd
+
 from .scrapers import (
-    scrape_top200,
-    scrape_streams,
     scrape_credits,
     scrape_releasedate,
     scrape_requirements,
-    scrape_songinfo
+    scrape_songinfo,
+    scrape_streams,
+    scrape_top200
+)
+from .utils import (
+    SongInfo,
+    interpolate,
+    remove_duplicates
 )
 
 logging.basicConfig(level=logging.DEBUG)
@@ -38,15 +40,9 @@ class Song(object):
     def __init__(self, db, songid):
         self.id = songid
         self._info = db._songs[self.id]
+        self.title = self._info['title']
+        self.artist = self._info['artist']
         self._dbpath = os.path.join(db.path, f'{self.id}.pkl')
-
-    @property
-    def title(self):
-        return self._info['title']
-
-    @property
-    def artist(self):
-        return self._info['artist']
 
     @property
     def is_tracking(self):
