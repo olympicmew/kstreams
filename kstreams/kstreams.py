@@ -93,7 +93,7 @@ class Song(object):
 
     def get_plays(self):
         # turns the raw data into a neat hourly overview of plays
-        data = pd.read_pickle(self._dbpath)
+        data = self._db
         if data.empty:
             return data
         else:
