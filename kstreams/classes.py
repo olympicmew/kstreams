@@ -1,10 +1,5 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Thu Sep 13 17:41:51 2018
-
-@author: olympicmew
-"""
+# coding: utf-8
 
 import collections.abc
 import json
@@ -16,7 +11,7 @@ import arrow
 import pandas as pd
 import requests
 
-from .scrapers import (
+from ._scrapers import (
     scrape_credits,
     scrape_releasedate,
     scrape_requirements,
@@ -26,7 +21,7 @@ from .scrapers import (
     SONGURL,
     ALBUMURL
 )
-from .utils import (
+from ._utils import (
     SongInfo,
     interpolate,
     remove_duplicates
@@ -354,3 +349,6 @@ def init_db(path):
     with open(blacklistpath, 'w') as f:
         json.dump([], f)
     return SongDB(path)
+
+
+__all__ = ['Song', 'SongDB', 'init_db']

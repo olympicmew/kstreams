@@ -1,4 +1,5 @@
-# -*- coding: utf-8 -*-
+#!/usr/bin/env python3
+# coding: utf-8
 
 from collections import namedtuple
 SongInfo = namedtuple('SongInfo', ['id', 'title', 'artist', 'release_date'])
@@ -16,4 +17,4 @@ def interpolate(s, freq, startdate=None, enddate=None):
     return s.asfreq('s').interpolate()[startdate:enddate].asfreq(freq)
 
 
-__all__ = ['SongInfo', 'remove_duplicates', 'interpolate']
+__all__ = []
