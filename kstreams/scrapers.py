@@ -23,24 +23,24 @@ ALBUMURL = 'http://www.genie.co.kr/detail/albumInfo'
 def scrape_top200():
     songs = []
     with requests.Session() as session:
-    for n in range(1, 5):
-        params = {'ditc': 'D', 'rtm': 'Y', 'pg': n}
-        page = session.get(TOP200URL, params)
-        soup = BeautifulSoup(page.text, 'lxml')
-        entries = soup.find('tbody').find_all('tr')
-        for entry in entries:
-            songid = entry.get('songid')
-            title = entry.find(class_='title').get_text().strip()
-            artist = entry.find(class_='artist').get_text().strip()
-            albumid = entry.find(class_='albumtitle').get('onclick')
-            regex = re.compile(r"fnViewAlbumLayer\('(.+)'\)")
-            albumid = regex.search(albumid).group(1)
-            song = {'id': songid,
-                    'title': title,
-                    'artist': artist,
-                    'album_id': albumid}
-            songs.append(song)
-        logging.debug('Page %d parsed', n)
+        for n in range(1, 5):
+            params = {'ditc': 'D', 'rtm': 'Y', 'pg': n}
+            page = session.get(TOP200URL, params)
+            soup = BeautifulSoup(page.text, 'lxml')
+            entries = soup.find('tbody').find_all('tr')
+            for entry in entries:
+                songid = entry.get('songid')
+                title = entry.find(class_='title').get_text().strip()
+                artist = entry.find(class_='artist').get_text().strip()
+                albumid = entry.find(class_='albumtitle').get('onclick')
+                regex = re.compile(r"fnViewAlbumLayer\('(.+)'\)")
+                albumid = regex.search(albumid).group(1)
+                song = {'id': songid,
+                        'title': title,
+                        'artist': artist,
+                        'album_id': albumid}
+                songs.append(song)
+            logging.debug('Page %d parsed', n)
     logging.debug('Scraping of top 200 completed')
     return songs
 
