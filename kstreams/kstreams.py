@@ -101,7 +101,8 @@ class Song(object):
             startdate = arrow.get(data.index[0]).floor('hour').shift(hours=1)
             data = interpolate(data, 'h', startdate=startdate.datetime)
             data = data.astype(int)
-            return data.diff().shift(-1, freq='h').to_period()
+            data = data.diff().tail(-1).astype(int)
+            return data.to_period().shift(-1, freq='h')
 
     def _dbappend(self, record):
         self._db.append(record).to_pickle(self._dbpath)
