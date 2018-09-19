@@ -24,7 +24,6 @@ from ._scrapers import (
 from ._utils import (
     SongInfo,
     interpolate,
-    remove_duplicates
 )
 
 logging.basicConfig(level=logging.DEBUG)
@@ -120,7 +119,7 @@ class Song(object):
         if data.empty:
             return data
         else:
-            data = remove_duplicates(data)
+            data = data.drop_duplicates()
             startdate = arrow.get(data.index[0]).floor('hour').shift(hours=1)
             data = interpolate(data, 'h', startdate=startdate.datetime)
             data = data.astype(int)
