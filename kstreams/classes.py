@@ -119,7 +119,6 @@ class Song(object):
         if data.empty:
             return data
         else:
-            data = data.drop_duplicates()
             startdate = arrow.get(data.index[0]).floor('hour').shift(hours=1)
             data = interpolate(data, 'h', startdate=startdate.datetime)
             data = data.astype(int)
@@ -127,7 +126,9 @@ class Song(object):
             return data.to_period().shift(-1, freq='h')
 
     def _dbappend(self, record):
-        self._db.append(record).to_pickle(self._dbpath)
+        db = self._db.append(record)
+        db = db.drop_duplicates()
+        db.to_pickle(self._dbpath)
 
     @property
     def _db(self):
