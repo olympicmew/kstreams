@@ -119,11 +119,10 @@ class Song(object):
         if data.empty:
             return data
         else:
-            startdate = arrow.get(data.index[0]).floor('hour').shift(hours=1)
-            data = interpolate(data, 'h', startdate=startdate.datetime)
-            data = data.astype(int)
-            data = data.diff().tail(-1).astype(int)
-            return data.to_period().shift(-1, freq='h')
+            data = interpolate(data)
+            data = data.floordiv(1)  # truncate the decimal part
+            data = (-data.diff(-1)).head(-1)
+            return data.to_period()
 
     def _dbappend(self, record):
         db = self._db.append(record)
