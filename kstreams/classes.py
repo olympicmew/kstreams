@@ -31,6 +31,23 @@ logging.basicConfig(level=logging.DEBUG)
 
 
 class Song(object):
+    """This class represents a single song from a database.
+
+    It's not meant to be instantiated directly, but instances of it are
+    created on demand by the parent SongDB object.
+
+    Attributes:
+        id: The unique identifier of the song on Genie Music.
+        title: The title of the song.
+        artist: The artist of the song.
+        is_tracking: Whether the song is currently being tracked or not.
+            Please refer to the SongDB docstring for more information on
+            the tracking system.
+        credits: A dictionary containing the songwriting credits for the
+            song as reported by Genie.
+        minute: The minute at which the song will be fetched by the
+            parent database.
+    """
     def __init__(self, db, songid):
         self.id = songid
         self._info = db._songs[self.id]
@@ -56,14 +73,13 @@ class Song(object):
 
     @property
     def minute(self):
-        """The minute at which the song will be fetched by the parent database."""
         if 'minute' not in self._info:
             random.seed(self.id)
             self._info['minute'] = random.randrange(1, 60)
         return self._info['minute']
 
     def fetch(self):
-        """Fetches the current total plays count from Genie and stores it."""
+        """Fetches the current total play count from Genie and stores it."""
         # scraping code
         try:
             page = requests.get(SONGURL, {'xgnm': self.id})
@@ -90,14 +106,15 @@ class Song(object):
         """Returns a table of hourly streaming data.
 
         Returns:
-            A Pandas Series object with a hourly PeriodIndex. The values represent
-            the number of plays in the hour period. A record such as
+            A Pandas Series object with a hourly PeriodIndex. The values
+            represent the number of plays in the hour period. A record such as
 
             2018-09-18 11:00    3017
 
-            means that the song has been played 3017 times in the time period from
-            11:00 to 11:59 of September 18, 2018. If not enough data have been
-            fetched to return such a table an empty Series object will be returned.
+            means that the song has been played 3017 times in the time period
+            from 11:00 to 11:59 of September 18, 2018. If not enough data have
+            been fetched to return such a table an empty Series object will
+            be returned.
         """
         data = self._db
         if data.empty:
@@ -119,6 +136,46 @@ class Song(object):
 
 
 class SongDB(collections.abc.Collection):
+    """This class represents a single database.
+
+    It provides methods to access the streaming data and keep the
+    database up to date. Songs in the database, represented by Song
+    objects, can be accessed either by iterating on the SongDB instance
+    or by indexing, using their song ID.
+
+    When creating a new database, it is advised to call the init_db()
+    function found in this module, which will also return a SongDB
+    instance to access the newly created database.
+
+    The database is designed to fetch the total play count of the songs
+    it keeps track of every hour, while adding new songs by looking at
+    the hourly Genie Top 200. These operations, executed by the fetch()
+    and update() methods respectively, need to be automated by the user
+    of the package through a daemon, cron jobs or similar. A server
+    module might be added to the package at a later date.
+
+    To avoid overloading the Genie servers with requests, the database
+    isn't designed to fetch streaming data for all the songs at the same
+    time. Rather, a minute is assigned algorithmically to every song and
+    the fetch() method will only retrieve data for the songs alloted to
+    the minute at which the method is called. For example, the song
+    뚜두뚜두 (DDU-DU DDU-DU) by BLACKPINK is scheduled to be fetched at
+    the 17th minute of every hour, and will be only fetched if the
+    fetch() method of the SongDB instance is called at that time.
+
+    In order to prevent the average load to exceed one request per
+    second, a limited number of songs can be tracked at any given time
+    and when the database exceeds that size a number of songs stops
+    being tracked further through a call to the prune() method.
+
+    Attributes:
+        path: the path to the directory where the database files are stored.
+        quota: the maximum number of songs the database can track at any
+            given moment. It's currently hardcoded to 3540, but it can be
+            overridden at runtime and it will be configurable in a
+            future release.
+        tracking: the number of songs that are currently being tracked.
+    """
 
     def __init__(self, path):
         """Returns a new SongDB object.
@@ -317,10 +374,10 @@ class SongDB(collections.abc.Collection):
         """Calls Song.fetch() for the songs scheduled for the given minute.
 
         Args:
-            minute: the minute for which the fetching must be performed. All songs
-                that have the given minute in their minute attribute will be
-                fetched. The argument is optional, and it defaults to the current
-                minute as provided by the system clock.
+            minute: the minute for which the fetching must be performed. All
+                songs that have the given minute in their minute attribute will
+                be fetched. The argument is optional, and it defaults to the
+                current minute as provided by the system clock.
         """
         logging.debug('Fetching started for minute %d', minute)
         # TODO change the order of actions so that I can log whether
@@ -334,9 +391,10 @@ def init_db(path):
     """Initializes a new database at the given path.
 
     Args:
-        path: the path to the directory where the file structure of the new
-            database will be created. If the directory doesn't exist, it will be
-            created. It will also overwrite an existing database at the location.
+        path: the path to the directory where the file structure of the
+            new database will be created. If the directory doesn't
+            exist, it will be created. It will also overwrite an
+            existing database at the location.
     Returns:
         a SongDB instance pointing to the newly created database.
     """
