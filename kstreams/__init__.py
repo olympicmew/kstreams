@@ -21,4 +21,5 @@ their usage.
 
 from .classes import Song, SongDB, init_db
 
+name = 'kstreams'
 __all__ = ['Song', 'SongDB', 'init_db']
