@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 # coding: utf-8
 
-import collections.abc
 import json
 import logging
 import os
@@ -134,7 +133,7 @@ class Song(object):
         return pd.read_pickle(self._dbpath)
 
 
-class SongDB(collections.abc.Collection):
+class SongDB(object):
     """This class represents a single database.
 
     It provides methods to access the streaming data and keep the
