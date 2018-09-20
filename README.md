@@ -11,4 +11,5 @@ package.
 - Requests
 - Arrow
 - Beautiful Soup 4
+- lxml
 - Pandas
