@@ -6,6 +6,9 @@ An ugly script that will do the job of fetching data until I'll come
 around writing something better
 """
 
+import logging
+logging.basicConfig(filename='kstreams.log', level=logging.DEBUG)
+
 if __name__ == '__main__':
     import kstreams
     from sys import argv
