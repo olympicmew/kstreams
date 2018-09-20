@@ -7,7 +7,7 @@ package.
 
 ### Dependencies
 
-- Python 3.6
+- Python 3
 - Requests
 - Arrow
 - Beautiful Soup 4
