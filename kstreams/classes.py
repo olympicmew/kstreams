@@ -51,7 +51,7 @@ class Song(object):
         self.title = self._info.get('title')
         self.artist = self._info.get('artist')
         self.agency = self._info.get('agency')
-        self.release_date = arrow.get(self._info.get('release_date')
+        self.release_date = arrow.get(self._info.get('release_date'))
         self._dbpath = os.path.join(db.path, '{}.pkl'.format(self.id))
 
     @property
