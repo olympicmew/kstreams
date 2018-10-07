@@ -48,9 +48,9 @@ class Song(object):
     def __init__(self, db, songid):
         self.id = songid
         self._info = db._songs[self.id]
-        self.title = self._info['title']
-        self.artist = self._info['artist']
-        self.agency = self._info['agency']
+        self.title = self._info.get('title')
+        self.artist = self._info.get('artist')
+        self.agency = self._info.get('agency')
         self.release_date = arrow.get(self._info['release_date'])
         self._dbpath = os.path.join(db.path, '{}.pkl'.format(self.id))
 
