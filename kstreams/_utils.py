@@ -1,11 +1,7 @@
 #!/usr/bin/env python3
 # coding: utf-8
 
-from collections import namedtuple
-
 import pandas as pd
-
-SongInfo = namedtuple('SongInfo', ['id', 'title', 'artist', 'release_date'])
 
 
 def interpolate(s):

@@ -8,8 +8,6 @@ import arrow
 import requests
 from bs4 import BeautifulSoup
 
-from ._utils import SongInfo
-
 TOP200URL = 'http://www.genie.co.kr/chart/top200'
 SONGURL = 'http://www.genie.co.kr/detail/songInfo'
 ALBUMURL = 'http://www.genie.co.kr/detail/albumInfo'
@@ -53,7 +51,8 @@ def scrape_requirements(markup, songid):
     return is_korean, is_title
 
 
-def scrape_releasedate(markup):
+def scrape_albuminfo(markup):
+    # Fetches metadata from album page (release date, agency, etc.)
     # TODO default assumed release time configurable in settings
     # default is 9am UTC unless such an assumption would imply time travel,
     # fallback is top of previous hour
@@ -64,7 +63,9 @@ def scrape_releasedate(markup):
     now = arrow.utcnow()
     if rel_date > now:
         rel_date = rel_date.replace(hour=now.hour).shift(hours=-1)
-    return rel_date
+    agency = soup.find(alt='기획사').parent.find_next_sibling(class_='value')
+    agency = agency.get_text(strip=True)
+    return {'release_date': rel_date, 'agency': agency}
 
 
 def scrape_stats(markup):
@@ -122,9 +123,13 @@ def scrape_songinfo(songid):
         albumid = soup.find(find_albumid).get('onclick')
         albumid = re.compile(r"'([0-9]+)'").search(albumid).group(1)
         albumpage = session.get(ALBUMURL, params={'axnm': albumid})
-        rel_date = scrape_releasedate(albumpage.text)
+        albuminfo = scrape_albuminfo(albumpage.text)
 
-    return SongInfo(songid, title, artist, rel_date.for_json())
+    return {'id': songid,
+            'title': title,
+            'artist': artist,
+            'release_date': albuminfo['release_date'],
+            'agency': albuminfo['agency']}
 
 
 __all__ = []

@@ -12,7 +12,7 @@ import requests
 
 from ._scrapers import (
     scrape_credits,
-    scrape_releasedate,
+    scrape_albuminfo,
     scrape_requirements,
     scrape_songinfo,
     scrape_stats,
@@ -21,7 +21,6 @@ from ._scrapers import (
     ALBUMURL
 )
 from ._utils import (
-    SongInfo,
     interpolate,
 )
 
@@ -51,6 +50,8 @@ class Song(object):
         self._info = db._songs[self.id]
         self.title = self._info['title']
         self.artist = self._info['artist']
+        self.agency = self._info['agency']
+        self.release_date = arrow.get(self._info['release_date'])
         self._dbpath = os.path.join(db.path, '{}.pkl'.format(self.id))
 
     @property
@@ -256,20 +257,21 @@ class SongDB(object):
         """Adds to the database the song with the metadata provided.
 
         Args:
-            songinfo: a named tuple with fields 'id', 'title', 'artist' and
-                'release_date', or an equivalent object with the appropriate
-                attributes.
+            songinfo: a dictionary with keys 'id', 'title', 'artist',
+                'release_date' and 'agency'.
         """
-        self._songs[songinfo.id] = {'title': songinfo.title,
-                                    'artist': songinfo.artist,
-                                    'release_date': songinfo.release_date,
-                                    'is_tracking': True,
-                                    'credits': {}}
+        self._songs[songinfo['id']] = {'title': songinfo['title'],
+                                       'artist': songinfo['artist'],
+                                       'release_date':
+                                           songinfo['release_date'].for_json(),
+                                       'is_tracking': True,
+                                       'credits': {},
+                                       'agency': songinfo['agency']}
 
-        dbpath = os.path.join(self.path, '{}.pkl'.format(songinfo.id))
+        dbpath = os.path.join(self.path, '{}.pkl'.format(songinfo['id']))
         pd.DataFrame(columns=['plays', 'listeners']).to_pickle(dbpath)
         logging.debug('Added to database (%s by %s)',
-                      songinfo.title, songinfo.artist)
+                      songinfo['title'], songinfo['artist'])
 
     def load(self):
         """Loads the song metadata and the blacklist in memory.
@@ -332,7 +334,7 @@ class SongDB(object):
                         logging.debug('Tracking will be resumed (%s by %s)',
                                       song['title'], song['artist'])
                         continue
-                # fetch release date and requirements
+                # fetch album info and requirements
                 try:
                     page = session.get(ALBUMURL,
                                        params={'axnm': song['album_id']})
@@ -341,17 +343,18 @@ class SongDB(object):
                                   'Song ID %s will not be added',
                                   song['album_id'], song['id'])
                     continue
-                release_date = scrape_releasedate(page.text)
+                albuminfo = scrape_albuminfo(page.text)
                 is_korean, is_title = scrape_requirements(page.text, song['id'])
                 logging.debug('Info fetched for assessment (%s by %s)',
                               song['title'], song['artist'])
                 # check requirements and add song
                 if is_korean and is_title:
                     tracking += 1
-                    songinfo = SongInfo(song['id'],
-                                        song['title'],
-                                        song['artist'],
-                                        release_date.for_json())
+                    songinfo = {'id': song['id'],
+                                'title': song['title'],
+                                'artist': song['artist'],
+                                'release_date': albuminfo['release_date'],
+                                'agency': albuminfo['agency']}
                     to_add.append(songinfo)
                 else:
                     self.blacklist.append(song['id'])
