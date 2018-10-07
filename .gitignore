@@ -146,3 +146,8 @@ pip-selfcheck.json
 
 
 # End of https://www.gitignore.io/api/linux,python
+
+# directories in my local environment
+venv-*/
+db/
+
