@@ -25,7 +25,12 @@ def scrape_top200():
             entries = soup.find('tbody').find_all('tr')
             for entry in entries:
                 songid = entry.get('songid')
-                title = entry.find(class_='title').get_text(strip=True)
+                entry.find(class_='
+                title = entry.find(class_='title')
+                # remove age rating info from the title tag
+                for span in title.find_all('span'):
+                    span.decompose()
+                title = title.get_text(strip=True)
                 artist = entry.find(class_='artist').get_text(strip=True)
                 albumid = entry.find(class_='albumtitle').get('onclick')
                 regex = re.compile(r"fnViewAlbumLayer\('(.+)'\)")
@@ -97,7 +102,11 @@ def scrape_songinfo(songid):
     with requests.Session() as session:
         page = session.get(SONGURL, params={'xgnm': songid})
         soup = BeautifulSoup(page.text, 'lxml')
-        title = soup.find(class_='name').get_text(strip=True)
+        title = soup.find(class_='name')
+        # remove age rating info from the title tag
+        for span in title.find_all('span'):
+            span.decompose()
+        title = title.get_text(strip=True)
 
         def find_artist(tag):
             return (tag.has_attr('onclick') and
