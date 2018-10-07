@@ -67,11 +67,13 @@ def scrape_releasedate(markup):
     return rel_date
 
 
-def scrape_streams(markup):
+def scrape_stats(markup):
     soup = BeautifulSoup(markup, "lxml")
-    streams = soup.find(alt='전체 재생수').parent.find_previous_sibling('p')
-    streams = streams.get_text(strip=True).replace(',', '')
-    return int(streams)
+    plays = soup.find(alt='전체 재생수').parent.find_previous_sibling('p')
+    plays = plays.get_text(strip=True).replace(',', '')
+    listeners = soup.find(alt='전체 청취자수').parent.find_previous_sibling('p')
+    listeners = listeners.get_text(strip=True).replace(','. '')
+    return {'plays': int(plays), 'listeners': int(listeners)}
 
 
 def scrape_credits(markup):

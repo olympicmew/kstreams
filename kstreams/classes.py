@@ -15,7 +15,7 @@ from ._scrapers import (
     scrape_releasedate,
     scrape_requirements,
     scrape_songinfo,
-    scrape_streams,
+    scrape_stats,
     scrape_top200,
     SONGURL,
     ALBUMURL
@@ -90,15 +90,24 @@ class Song(object):
             self.credits = scrape_credits(markup)
         tstamp = arrow.get(page.headers.get('date'),
                            'ddd, DD MMM YYYY HH:mm:ss ZZZ')
-        streams = scrape_streams(markup)
+        stats = scrape_stats(markup)
 
         # prepare the record to be stored
-        record = pd.Series(streams, [pd.to_datetime(tstamp.datetime)],
-                           name=self.title)
+        record = pd.DataFrame(stats, [pd.to_datetime(tstamp.datetime)])
         # save new record in the database
         self._dbappend(record)
         logging.debug('Fetching completed: %s by %s',
                       self.title, self.artist)
+
+    def _get_stats(self):
+        data = self._db
+        if data.empty:
+            return data
+        else:
+            data = interpolate(data)
+            data = data.floordiv(1)  # truncate the decimal part
+            data = (-data.diff(-1)).head(-1)
+            return data.to_period()
 
     def get_plays(self):
         """Returns a table of hourly streaming data.
@@ -114,14 +123,7 @@ class Song(object):
             been fetched to return such a table an empty Series object will
             be returned.
         """
-        data = self._db
-        if data.empty:
-            return data
-        else:
-            data = interpolate(data)
-            data = data.floordiv(1)  # truncate the decimal part
-            data = (-data.diff(-1)).head(-1)
-            return data.to_period()
+        return self.get_stats()['plays'].rename(self.title)
 
     def _dbappend(self, record):
         db = self._db.append(record)
@@ -265,7 +267,7 @@ class SongDB(object):
                                     'credits': {}}
 
         dbpath = os.path.join(self.path, '{}.pkl'.format(songinfo.id))
-        pd.Series(name=songinfo.title).to_pickle(dbpath)
+        pd.DataFrame(columns=['plays', 'listeners']).to_pickle(dbpath)
         logging.debug('Added to database (%s by %s)',
                       songinfo.title, songinfo.artist)
 
