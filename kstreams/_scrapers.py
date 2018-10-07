@@ -72,7 +72,7 @@ def scrape_stats(markup):
     plays = soup.find(alt='전체 재생수').parent.find_previous_sibling('p')
     plays = plays.get_text(strip=True).replace(',', '')
     listeners = soup.find(alt='전체 청취자수').parent.find_previous_sibling('p')
-    listeners = listeners.get_text(strip=True).replace(','. '')
+    listeners = listeners.get_text(strip=True).replace(',', '')
     return {'plays': int(plays), 'listeners': int(listeners)}
 
 
