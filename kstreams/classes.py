@@ -124,7 +124,7 @@ class Song(object):
             been fetched to return such a table an empty Series object will
             be returned.
         """
-        return self.get_stats()['plays'].rename(self.title)
+        return self._get_stats()['plays'].rename(self.title)
 
     def _dbappend(self, record):
         db = self._db.append(record)
