@@ -23,7 +23,6 @@ def scrape_top200():
             entries = soup.find('tbody').find_all('tr')
             for entry in entries:
                 songid = entry.get('songid')
-                entry.find(class_='
                 title = entry.find(class_='title')
                 # remove age rating info from the title tag
                 for span in title.find_all('span'):
