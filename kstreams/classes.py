@@ -127,7 +127,7 @@ class Song(object):
         return self._get_stats()['plays'].rename(self.title)
 
     def _dbappend(self, record):
-        db = self._db.append(record)
+        db = self._db.append(record, sort=True)
         db = db.drop_duplicates()
         db.to_pickle(self._dbpath)
 
