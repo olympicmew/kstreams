@@ -269,7 +269,7 @@ class SongDB(object):
                                        'agency': songinfo['agency']}
 
         dbpath = os.path.join(self.path, '{}.pkl'.format(songinfo['id']))
-        pd.DataFrame(columns=['plays', 'listeners']).to_pickle(dbpath)
+        pd.DataFrame(columns=['plays', 'listeners'], dtype=int).to_pickle(dbpath)
         logging.debug('Added to database (%s by %s)',
                       songinfo['title'], songinfo['artist'])
 
