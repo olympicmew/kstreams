@@ -24,7 +24,7 @@ from ._utils import (
     interpolate,
 )
 
-logging.basicConfig(level=logging.DEBUG)
+#logging.basicConfig(level=logging.DEBUG)
 
 
 class Song(object):
