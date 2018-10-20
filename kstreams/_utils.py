@@ -17,5 +17,3 @@ def interpolate(s):
     interp[mask] = None
     return interp
 
-
-__all__ = []

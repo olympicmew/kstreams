@@ -130,5 +130,3 @@ def scrape_songinfo(songid):
             'release_date': albuminfo['release_date'],
             'agency': albuminfo['agency']}
 
-
-__all__ = []

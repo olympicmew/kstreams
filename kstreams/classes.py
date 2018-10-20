@@ -24,7 +24,8 @@ from ._utils import (
     interpolate,
 )
 
-#logging.basicConfig(level=logging.DEBUG)
+
+# logging.basicConfig(level=logging.DEBUG)
 
 
 class Song(object):
@@ -45,6 +46,7 @@ class Song(object):
         minute: The minute at which the song will be fetched by the
             parent database.
     """
+
     def __init__(self, db, songid):
         self.id = songid
         self._info = db._songs[self.id]
@@ -96,7 +98,7 @@ class Song(object):
         # prepare the record to be stored
         record = pd.DataFrame(stats, [pd.to_datetime(tstamp.datetime)])
         # save new record in the database
-        self._dbappend(record)
+        self._db_append(record)
         logging.debug('Fetching completed: %s by %s',
                       self.title, self.artist)
 
@@ -108,25 +110,45 @@ class Song(object):
             data = interpolate(data)
             data = data.floordiv(1)  # truncate the decimal part
             data = (-data.diff(-1)).head(-1)
-            return data.to_period()
+            return data.tz_convert('Asia/Seoul').to_period()
 
     def get_plays(self):
-        """Returns a table of hourly streaming data.
+        """Returns a table of hourly plays data.
 
         Returns:
             A Pandas Series object with a hourly PeriodIndex. The values
-            represent the number of plays in the hour period. A record such as
+            represent the number of plays in the hour period. A record
+            such as
 
             2018-09-18 11:00    3017
 
-            means that the song has been played 3017 times in the time period
-            from 11:00 to 11:59 of September 18, 2018. If not enough data have
-            been fetched to return such a table an empty Series object will
-            be returned.
+            means that the song has been played 3017 times in the time
+            period from 11:00 to 11:59 of September 18, 2018. If not
+            enough data have been fetched to return such a table an
+            empty Series object will be returned. Times are given in
+            Korean Standard Time.
         """
         return self._get_stats()['plays'].rename(self.title)
 
-    def _dbappend(self, record):
+    def get_listeners(self):
+        """Returns a table of hourly listeners data.
+
+        Returns:
+            A Pandas Series object with a hourly PeriodIndex. The values
+            represent the number of new listeners in the hour period. A
+            record such as
+
+            2018-09-18 11:00    183
+
+            means that 183 people have listened to the song for the
+            first time in the time period from 11:00 to 11:59 of
+            September 18, 2018. If not enough data have been fetched to
+            return such a table an empty Series object will be returned.
+            Times are given in Korean Standard Time.
+        """
+        return self._get_stats()['listeners'].rename(self.title)
+
+    def _db_append(self, record):
         db = self._db.append(record, sort=True)
         db = db.drop_duplicates()
         db.to_pickle(self._dbpath)
