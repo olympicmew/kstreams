@@ -1,9 +1,26 @@
 <component name="ProjectDictionaryState">
   <dictionary name="olympicmew">
     <words>
+      <w>albumid</w>
       <w>albuminfo</w>
+      <w>albumpage</w>
+      <w>albumtitle</w>
+      <w>albumurl</w>
+      <w>axnm</w>
+      <w>bfill</w>
+      <w>blackpink</w>
+      <w>ditc</w>
+      <w>kstreams</w>
+      <w>loglevel</w>
+      <w>newesturl</w>
+      <w>olympicmew</w>
       <w>songid</w>
       <w>songinfo</w>
+      <w>songurl</w>
+      <w>tbody</w>
+      <w>tstamp</w>
+      <w>xgnm</w>
+      <w>yyyy</w>
     </words>
   </dictionary>
 </component>

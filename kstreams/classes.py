@@ -52,7 +52,7 @@ class Song(object):
         self.artist = self._info.get('artist')
         self.agency = self._info.get('agency')
         self.release_date = arrow.get(self._info.get('release_date'))
-        self._dbpath = os.path.join(db.path, '{}.pkl'.format(self.id))
+        self._db_path = os.path.join(db.path, '{}.pkl'.format(self.id))
 
     @property
     def is_tracking(self):
@@ -149,11 +149,11 @@ class Song(object):
     def _db_append(self, record):
         db = self._db.append(record, sort=True)
         db = db.drop_duplicates()
-        db.to_pickle(self._dbpath)
+        db.to_pickle(self._db_path)
 
     @property
     def _db(self):
-        return pd.read_pickle(self._dbpath)
+        return pd.read_pickle(self._db_path)
 
 
 class SongDB(object):
@@ -178,7 +178,7 @@ class SongDB(object):
     To avoid overloading the Genie servers with requests, the database
     isn't designed to fetch streaming data for all the songs at the same
     time. Rather, a minute is assigned algorithmically to every song and
-    the fetch() method will only retrieve data for the songs alloted to
+    the fetch() method will only retrieve data for the songs allotted to
     the minute at which the method is called. For example, the song
     뚜두뚜두 (DDU-DU DDU-DU) by BLACKPINK is scheduled to be fetched at
     the 17th minute of every hour, and will be only fetched if the
@@ -215,9 +215,10 @@ class SongDB(object):
         """
         self.path = path
         self.quota = 3540  # TODO make it configurable in the settings
-        self._jsonpath = os.path.join(self.path, 'songs.json')
-        self._blacklistpath = os.path.join(self.path, 'blacklist.json')
+        self._json_path = os.path.join(self.path, 'songs.json')
+        self._blacklist_path = os.path.join(self.path, 'blacklist.json')
         self._songs = {}
+        self.blacklist = []
         self._cache = {}
         self.load()
 
@@ -289,9 +290,9 @@ class SongDB(object):
                                        'credits': {},
                                        'agency': songinfo['agency']}
 
-        dbpath = os.path.join(self.path, '{}.pkl'.format(songinfo['id']))
+        db_path = os.path.join(self.path, '{}.pkl'.format(songinfo['id']))
         pd.DataFrame(columns=['plays', 'listeners'], dtype=int).to_pickle(
-            dbpath)
+            db_path)
         logging.info('Added to database (%s by %s)',
                      songinfo['title'], songinfo['artist'])
 
@@ -302,9 +303,9 @@ class SongDB(object):
         later if one wants to revert the state of the SongDB object to
         what it was after the last call to SongDB.save().
         """
-        with open(self._jsonpath, 'r') as f:
+        with open(self._json_path, 'r') as f:
             self._songs = json.load(f)
-        with open(self._blacklistpath, 'r') as f:
+        with open(self._blacklist_path, 'r') as f:
             self.blacklist = json.load(f)
         logging.info('Song metadata DB and blacklist loaded')
 
@@ -314,9 +315,9 @@ class SongDB(object):
         This is generally called after a call to SongDB.update()
         or fetch().
         """
-        with open(self._jsonpath, 'w') as f:
+        with open(self._json_path, 'w') as f:
             json.dump(self._songs, f, indent=4, ensure_ascii=False)
-        with open(self._blacklistpath, 'w') as f:
+        with open(self._blacklist_path, 'w') as f:
             json.dump(self.blacklist, f, indent=0)
         logging.info('Changes to the DB in memory saved on disk')
 
@@ -385,7 +386,7 @@ class SongDB(object):
                         to_add.append(songinfo)
                 except (requests.ConnectionError, requests.HTTPError):
                     logging.warning('Request to genie.co.kr for newest songs '
-                                  'failed')
+                                    'failed')
 
             try:
                 top200_songs = scrape_top200(session)
@@ -424,7 +425,7 @@ class SongDB(object):
                         albuminfo = scrape_albuminfo(page.text)
                         requirements = scrape_requirements(page.text,
                                                            song['id'])
-                        logging.debug('Info fetched for assessment (%s by %s)',
+                        logging.debug('Album info fetched (%s by %s)',
                                       song['title'], song['artist'])
                         # check requirements and add song
                         if all(requirements):
@@ -485,13 +486,13 @@ def init_db(path):
     Returns:
         a SongDB instance pointing to the newly created database.
     """
-    jsonpath = os.path.join(path, 'songs.json')
-    blacklistpath = os.path.join(path, 'blacklist.json')
+    json_path = os.path.join(path, 'songs.json')
+    blacklist_path = os.path.join(path, 'blacklist.json')
     if not os.path.isdir(path):
         os.makedirs(path)
-    with open(jsonpath, 'w') as f:
+    with open(json_path, 'w') as f:
         json.dump({}, f)
-    with open(blacklistpath, 'w') as f:
+    with open(blacklist_path, 'w') as f:
         json.dump([], f)
     return SongDB(path)
 
