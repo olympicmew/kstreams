@@ -410,12 +410,14 @@ class SongDB(object):
                 be fetched. The argument is optional, and it defaults to the
                 current minute as provided by the system clock.
         """
-        logging.debug('Fetching started for minute %d', minute)
-        # TODO change the order of actions so that I can log whether
-        # anything was fetched this minute or not
+        to_fetch = []
         for song in self:
             if song.is_tracking and song.minute == minute:
-                song.fetch()
+                to_fetch.append(song)
+        logging.debug('%d songs will be fetched for minute %d',
+                      len(to_fetch), minute)
+        for song in to_add:
+            song.fetch()
 
 
 def init_db(path):
