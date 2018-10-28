@@ -10,16 +10,26 @@ import logging
 logging.basicConfig(filename='kstreams.log', level=logging.DEBUG)
 
 if __name__ == '__main__':
+    import argparse
     import kstreams
-    from sys import argv
 
-    if argv[1] == 'init':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('mode',
+                        choices=['init', 'update', 'update-newest', 'fetch'],
+                        required=True)
+    args = parser.parse_args()
+
+    if args.mode == 'init':
         kstreams.init_db('db')
-    elif argv[1] == 'update':
+    elif args.mode == 'update':
         db = kstreams.SongDB('db')
         db.update()
         db.save()
-    elif argv[1] == 'fetch':
+    elif args.mode == 'update-newest':
+        db = kstreams.SongDB('db')
+        db.update(fetch_newest=True)
+        db.save()
+    elif args.mode == 'fetch':
         db = kstreams.SongDB('db')
         db.fetch()
         db.save()

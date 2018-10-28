@@ -13,6 +13,7 @@ import requests
 from ._scrapers import (
     scrape_credits,
     scrape_albuminfo,
+    scrape_newest,
     scrape_requirements,
     scrape_songinfo,
     scrape_stats,
@@ -23,9 +24,6 @@ from ._scrapers import (
 from ._utils import (
     interpolate,
 )
-
-
-# logging.basicConfig(level=logging.DEBUG)
 
 
 class Song(object):
@@ -319,76 +317,128 @@ class SongDB(object):
             json.dump(self.blacklist, f, indent=0)
         logging.debug('Changes to the DB in memory saved on disk')
 
-    def update(self):
-        """Looks at the hourly Genie Top 200 and adds new songs to the database.
+    def update(self, fetch_newest=False):
+        """Asks Genie for new songs and adds them to the database.
 
-        In order to be added by this method, a song must satisfy the following
-        criteria:
+        This method has two modes of behavior: in the default one, the
+        real time top 200 for the current hour is fetched and songs from
+        it are added to the database if they aren't already there, or
+        their tracking is resumed if they are there and their tracking
+        had been interrupted. In the alternative mode, a list of
+        recently released songs is fetched and all songs featured in it
+        are added. The top 200 is still fetched in order to resume
+        tracking of songs which were pruned previously and have become
+        relevant again.
 
-        - it must be tagged as '가요' in its genre field. This is the main tag
-        for Korean-language songs, with the exception of OSTs.
+        In order to be added by this method, a song must satisfy the
+        following criteria:
+
+        - it must be tagged as '가요' in its genre field. This is the
+          main tag for Korean-language songs, with the exception
+          of OSTs.
 
         - it must be tagged as a title track in the album it's part of.
 
-        Songs that don't meet these requirements, or have not charted, can be
-        tracked by calling the add_from_songid() or add_from_songinfo methods.
+        Songs that don't meet these requirements can still be tracked by
+        calling the add_from_songid() or add_from_songinfo() methods.
+
+        Args:
+            fetch_newest: toggle alternative fetching mode.
         """
         tracking = self.count_tracking()
         resume_tracking = []
         to_add = []
 
         with requests.Session() as session:
-            try:
-                fetched_songs = scrape_top200(session)
-            except (requests.ConnectionError, requests.HTTPError):
-                logging.error('Request to genie.co.kr for songs to fetch '
-                              'failed. No songs will be added')
-                return
-            for song in fetched_songs:
-                # skip blacklisted songs
-                if song['id'] in self.blacklist:
-                    logging.debug('Skipped: blacklisted (%s by %s)',
-                                  song['title'], song['artist'])
-                    continue
-                # catch songs already in the db
-                if song['id'] in self:
-                    if self.is_tracking(song['id']):
-                        logging.debug('Skipped: already tracking (%s by %s)',
-                                      song['title'], song['artist'])
-                        continue
-                    else:
-                        tracking += 1
-                        resume_tracking.append(song['id'])
-                        logging.debug('Tracking will be resumed (%s by %s)',
-                                      song['title'], song['artist'])
-                        continue
-                # fetch album info and requirements
+            if fetch_newest:
                 try:
-                    page = session.get(ALBUMURL,
-                                       params={'axnm': song['album_id']})
+                    newest_songs = scrape_newest(session)
+                    for song in newest_songs:
+                        # catch songs already in the db
+                        if song['id'] in self:
+                            continue
+
+                        # fetch album info
+                        try:
+                            album_id = song['album_id']
+                            page = session.get(ALBUMURL,
+                                               params={'axnm': album_id})
+                        except (requests.ConnectionError, requests.HTTPError):
+                            logging.error(
+                                'Request to genie.co.kr for album ID %s '
+                                'failed. Song ID %s will not be added',
+                                song['album_id'], song['id'])
+                            continue
+                        albuminfo = scrape_albuminfo(page.text)
+
+                        # add song. checking of requirements isn't needed as
+                        # songs from the newest song list already meet them
+                        tracking += 1
+                        songinfo = {'id': song['id'],
+                                    'title': song['title'],
+                                    'artist': song['artist'],
+                                    'release_date': albuminfo['release_date'],
+                                    'agency': albuminfo['agency']}
+                        to_add.append(songinfo)
                 except (requests.ConnectionError, requests.HTTPError):
-                    logging.error(
-                        'Request to genie.co.kr for album ID %s failed. '
-                        'Song ID %s will not be added',
-                        song['album_id'], song['id'])
-                    continue
-                albuminfo = scrape_albuminfo(page.text)
-                requirements = scrape_requirements(page.text, song['id'])
-                logging.debug('Info fetched for assessment (%s by %s)',
-                              song['title'], song['artist'])
-                # check requirements and add song
-                if all(requirements):
-                    tracking += 1
-                    songinfo = {'id': song['id'],
-                                'title': song['title'],
-                                'artist': song['artist'],
-                                'release_date': albuminfo['release_date'],
-                                'agency': albuminfo['agency']}
-                    to_add.append(songinfo)
-                else:
-                    self.blacklist.append(song['id'])
-                    logging.debug('Blacklisted (%s by %s)',
-                                  song['title'], song['artist'])
+                    logging.error('Request to genie.co.kr for newest songs '
+                                  'failed')
+
+            try:
+                top200_songs = scrape_top200(session)
+                for song in top200_songs:
+                    # skip blacklisted songs
+                    if song['id'] in self.blacklist:
+                        logging.debug('Skipped: blacklisted (%s by %s)',
+                                      song['title'], song['artist'])
+                        continue
+                    # catch songs already in the db
+                    if song['id'] in self:
+                        if self.is_tracking(song['id']):
+                            logging.debug(
+                                'Skipped: already tracking (%s by %s)',
+                                song['title'], song['artist'])
+                            continue
+                        else:
+                            tracking += 1
+                            resume_tracking.append(song['id'])
+                            logging.debug(
+                                'Tracking will be resumed (%s by %s)',
+                                song['title'], song['artist'])
+                            continue
+                    if not fetch_newest:
+                        # fetch album info and requirements
+                        try:
+                            page = session.get(ALBUMURL,
+                                               params={
+                                                   'axnm': song['album_id']})
+                        except (requests.ConnectionError, requests.HTTPError):
+                            logging.error(
+                                'Request to genie.co.kr for album ID %s '
+                                'failed. Song ID %s will not be added',
+                                song['album_id'], song['id'])
+                            continue
+                        albuminfo = scrape_albuminfo(page.text)
+                        requirements = scrape_requirements(page.text,
+                                                           song['id'])
+                        logging.debug('Info fetched for assessment (%s by %s)',
+                                      song['title'], song['artist'])
+                        # check requirements and add song
+                        if all(requirements):
+                            tracking += 1
+                            songinfo = {'id': song['id'],
+                                        'title': song['title'],
+                                        'artist': song['artist'],
+                                        'release_date': albuminfo[
+                                            'release_date'],
+                                        'agency': albuminfo['agency']}
+                            to_add.append(songinfo)
+                        else:
+                            self.blacklist.append(song['id'])
+                            logging.debug('Blacklisted (%s by %s)',
+                                          song['title'], song['artist'])
+            except (requests.ConnectionError, requests.HTTPError):
+                logging.error('Request to genie.co.kr for top 200 failed')
 
         # check if quota is exceeded with new songs and make space
         if tracking > self.quota:
@@ -416,7 +466,7 @@ class SongDB(object):
                 to_fetch.append(song)
         logging.debug('%d songs will be fetched for minute %d',
                       len(to_fetch), minute)
-        for song in to_add:
+        for song in to_fetch:
             song.fetch()
 
 
