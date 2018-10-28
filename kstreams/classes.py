@@ -97,8 +97,8 @@ class Song(object):
         record = pd.DataFrame(stats, [pd.to_datetime(tstamp.datetime)])
         # save new record in the database
         self._db_append(record)
-        logging.debug('Fetching completed: %s by %s',
-                      self.title, self.artist)
+        logging.info('Fetching completed: %s by %s',
+                     self.title, self.artist)
 
     def _get_stats(self):
         data = self._db
@@ -265,7 +265,7 @@ class SongDB(object):
             performance[song.id] = streams
         for songid in sorted(performance, key=performance.get)[:n]:
             self[songid].is_tracking = False
-        logging.debug('Disabled tracking of %d songs', min(n, performance))
+        logging.info('Disabled tracking of %d songs', min(n, performance))
 
     def add_from_songid(self, songid):
         """Fetches metadata for the song ID provided and adds it to the database."""
@@ -290,8 +290,8 @@ class SongDB(object):
         dbpath = os.path.join(self.path, '{}.pkl'.format(songinfo['id']))
         pd.DataFrame(columns=['plays', 'listeners'], dtype=int).to_pickle(
             dbpath)
-        logging.debug('Added to database (%s by %s)',
-                      songinfo['title'], songinfo['artist'])
+        logging.info('Added to database (%s by %s)',
+                     songinfo['title'], songinfo['artist'])
 
     def load(self):
         """Loads the song metadata and the blacklist in memory.
@@ -304,7 +304,7 @@ class SongDB(object):
             self._songs = json.load(f)
         with open(self._blacklistpath, 'r') as f:
             self.blacklist = json.load(f)
-        logging.debug('Song metadata DB and blacklist loaded')
+        logging.info('Song metadata DB and blacklist loaded')
 
     def save(self):  # TODO make JSON formatting configurable
         """Saves the current state of the song metadata and the blacklist.
@@ -315,7 +315,7 @@ class SongDB(object):
             json.dump(self._songs, f, indent=4, ensure_ascii=False)
         with open(self._blacklistpath, 'w') as f:
             json.dump(self.blacklist, f, indent=0)
-        logging.debug('Changes to the DB in memory saved on disk')
+        logging.info('Changes to the DB in memory saved on disk')
 
     def update(self, fetch_newest=False):
         """Asks Genie for new songs and adds them to the database.
@@ -364,7 +364,7 @@ class SongDB(object):
                             page = session.get(ALBUMURL,
                                                params={'axnm': album_id})
                         except (requests.ConnectionError, requests.HTTPError):
-                            logging.error(
+                            logging.warning(
                                 'Request to genie.co.kr for album ID %s '
                                 'failed. Song ID %s will not be added',
                                 song['album_id'], song['id'])
@@ -381,7 +381,7 @@ class SongDB(object):
                                     'agency': albuminfo['agency']}
                         to_add.append(songinfo)
                 except (requests.ConnectionError, requests.HTTPError):
-                    logging.error('Request to genie.co.kr for newest songs '
+                    logging.warning('Request to genie.co.kr for newest songs '
                                   'failed')
 
             try:
@@ -413,7 +413,7 @@ class SongDB(object):
                                                params={
                                                    'axnm': song['album_id']})
                         except (requests.ConnectionError, requests.HTTPError):
-                            logging.error(
+                            logging.warning(
                                 'Request to genie.co.kr for album ID %s '
                                 'failed. Song ID %s will not be added',
                                 song['album_id'], song['id'])
@@ -438,7 +438,7 @@ class SongDB(object):
                             logging.debug('Blacklisted (%s by %s)',
                                           song['title'], song['artist'])
             except (requests.ConnectionError, requests.HTTPError):
-                logging.error('Request to genie.co.kr for top 200 failed')
+                logging.warning('Request to genie.co.kr for top 200 failed')
 
         # check if quota is exceeded with new songs and make space
         if tracking > self.quota:
@@ -446,10 +446,10 @@ class SongDB(object):
 
         for songid in resume_tracking:
             self[songid].is_tracking = True
-        logging.debug('%d songs: tracking resumed', len(resume_tracking))
+        logging.info('%d songs: tracking resumed', len(resume_tracking))
         for songinfo in to_add:
             self.add_from_songinfo(songinfo)
-        logging.debug('%d songs: added to the database', len(to_add))
+        logging.info('%d songs: added to the database', len(to_add))
 
     def fetch(self, minute=arrow.utcnow().minute):
         """Calls Song.fetch() for the songs scheduled for the given minute.
@@ -464,8 +464,8 @@ class SongDB(object):
         for song in self:
             if song.is_tracking and song.minute == minute:
                 to_fetch.append(song)
-        logging.debug('%d songs will be fetched for minute %d',
-                      len(to_fetch), minute)
+        logging.info('%d songs will be fetched for minute %d',
+                     len(to_fetch), minute)
         for song in to_fetch:
             song.fetch()
 

@@ -40,7 +40,7 @@ def scrape_top200(session=None):
                     'album_id': albumid}
             songs.append(song)
         logging.debug('Page %d parsed', n)
-    logging.debug('Scraping of top 200 completed')
+    logging.info('Scraping of top 200 completed')
     return songs
 
 
@@ -68,7 +68,7 @@ def scrape_newest(session=None):
                 'artist': artist,
                 'album_id': albumid}
         songs.append(song)
-    logging.debug('Scraping of newest songs list completed')
+    logging.info('Scraping of newest songs list completed')
     return songs
 
 
