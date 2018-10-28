@@ -360,6 +360,9 @@ class SongDB(object):
                     for song in newest_songs:
                         # catch songs already in the db
                         if song['id'] in self:
+                            logging.debug(
+                                'Skipped: already tracking (%s by %s)',
+                                song['title'], song['artist'])
                             continue
 
                         # fetch album info
@@ -374,6 +377,8 @@ class SongDB(object):
                                 song['album_id'], song['id'])
                             continue
                         albuminfo = scrape_albuminfo(page.text)
+                        logging.debug('Album info fetched (%s by %s)',
+                                      song['title'], song['artist'])
 
                         # add song. checking of requirements isn't needed as
                         # songs from the newest song list already meet them
@@ -384,6 +389,9 @@ class SongDB(object):
                                     'release_date': albuminfo['release_date'],
                                     'agency': albuminfo['agency']}
                         to_add.append(songinfo)
+                        logging.debug(
+                            'Song will be added to DB (%s by %s)',
+                            song['title'], song['artist'])
                 except (requests.ConnectionError, requests.HTTPError):
                     logging.warning('Request to genie.co.kr for newest songs '
                                     'failed')
@@ -437,6 +445,9 @@ class SongDB(object):
                                             'release_date'],
                                         'agency': albuminfo['agency']}
                             to_add.append(songinfo)
+                            logging.debug(
+                                'Song will be added to DB (%s by %s)',
+                                song['title'], song['artist'])
                         else:
                             self.blacklist.append(song['id'])
                             logging.debug('Blacklisted (%s by %s)',
