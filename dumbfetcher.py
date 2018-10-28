@@ -14,7 +14,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('mode',
                         choices=['init', 'update', 'update-newest', 'fetch'])
-    parser.add_argument('-v', '--verbose', action='count')
+    parser.add_argument('path', nargs='?', default=None)
+    parser.add_argument('-v', '--verbose', action='count', default=0)
     args = parser.parse_args()
 
     if args.path:
