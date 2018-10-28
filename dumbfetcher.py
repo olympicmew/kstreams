@@ -13,8 +13,7 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument('mode',
-                        choices=['init', 'update', 'update-newest', 'fetch'],
-                        required=True)
+                        choices=['init', 'update', 'update-newest', 'fetch'])
     parser.add_argument('-v', '--verbose', action='count')
     args = parser.parse_args()
 
