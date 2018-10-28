@@ -14,40 +14,13 @@ SONGURL = 'http://www.genie.co.kr/detail/songInfo'
 ALBUMURL = 'http://www.genie.co.kr/detail/albumInfo'
 
 
-def scrape_top200():
+def scrape_top200(session=None):
+    if not session:
+        session = requests.Session()
     songs = []
-    with requests.Session() as session:
-        for n in range(1, 5):
-            params = {'ditc': 'D', 'rtm': 'Y', 'pg': n}
-            page = session.get(TOP200URL, params=params)
-            soup = BeautifulSoup(page.text, 'lxml')
-            entries = soup.find('tbody').find_all('tr')
-            for entry in entries:
-                songid = entry.get('songid')
-                title = entry.find(class_='title')
-                # remove age rating info from the title tag
-                for span in title.find_all('span'):
-                    span.decompose()
-                title = title.get_text(strip=True)
-                artist = entry.find(class_='artist').get_text(strip=True)
-                albumid = entry.find(class_='albumtitle').get('onclick')
-                regex = re.compile(r"fnViewAlbumLayer\('(.+)'\)")
-                albumid = regex.search(albumid).group(1)
-                song = {'id': songid,
-                        'title': title,
-                        'artist': artist,
-                        'album_id': albumid}
-                songs.append(song)
-            logging.debug('Page %d parsed', n)
-    logging.debug('Scraping of top 200 completed')
-    return songs
-
-
-def scrape_newest():
-    songs = []
-    with requests.Session() as session:
-        params = {'GenreCode': 'L010', 'pg': 1}
-        page = session.get(NEWESTURL, params=params)
+    for n in range(1, 5):
+        params = {'ditc': 'D', 'rtm': 'Y', 'pg': n}
+        page = session.get(TOP200URL, params=params)
         soup = BeautifulSoup(page.text, 'lxml')
         entries = soup.find('tbody').find_all('tr')
         for entry in entries:
@@ -59,13 +32,42 @@ def scrape_newest():
             title = title.get_text(strip=True)
             artist = entry.find(class_='artist').get_text(strip=True)
             albumid = entry.find(class_='albumtitle').get('onclick')
-            regex = re.compile(r"fnViewAlbumLayer\('?(.+)'?\)")
+            regex = re.compile(r"fnViewAlbumLayer\('(.+)'\)")
             albumid = regex.search(albumid).group(1)
             song = {'id': songid,
                     'title': title,
                     'artist': artist,
                     'album_id': albumid}
             songs.append(song)
+        logging.debug('Page %d parsed', n)
+    logging.debug('Scraping of top 200 completed')
+    return songs
+
+
+def scrape_newest(session=None):
+    if not session:
+        session = requests.Session()
+    songs = []
+    params = {'GenreCode': 'L010', 'pg': 1}
+    page = session.get(NEWESTURL, params=params)
+    soup = BeautifulSoup(page.text, 'lxml')
+    entries = soup.find('tbody').find_all('tr')
+    for entry in entries:
+        songid = entry.get('songid')
+        title = entry.find(class_='title')
+        # remove age rating info from the title tag
+        for span in title.find_all('span'):
+            span.decompose()
+        title = title.get_text(strip=True)
+        artist = entry.find(class_='artist').get_text(strip=True)
+        albumid = entry.find(class_='albumtitle').get('onclick')
+        regex = re.compile(r"fnViewAlbumLayer\('?(.+)'?\)")
+        albumid = regex.search(albumid).group(1)
+        song = {'id': songid,
+                'title': title,
+                'artist': artist,
+                'album_id': albumid}
+        songs.append(song)
     logging.debug('Scraping of newest songs list completed')
     return songs
 

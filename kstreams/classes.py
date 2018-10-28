@@ -244,8 +244,7 @@ class SongDB(object):
         except KeyError:
             return False
 
-    @property
-    def tracking(self):
+    def count_tracking(self):
         """Returns the number of songs currently being tracked."""
         return len([song for song in self if song.is_tracking])
 
@@ -291,7 +290,8 @@ class SongDB(object):
                                        'agency': songinfo['agency']}
 
         dbpath = os.path.join(self.path, '{}.pkl'.format(songinfo['id']))
-        pd.DataFrame(columns=['plays', 'listeners'], dtype=int).to_pickle(dbpath)
+        pd.DataFrame(columns=['plays', 'listeners'], dtype=int).to_pickle(
+            dbpath)
         logging.debug('Added to database (%s by %s)',
                       songinfo['title'], songinfo['artist'])
 
@@ -319,7 +319,7 @@ class SongDB(object):
             json.dump(self.blacklist, f, indent=0)
         logging.debug('Changes to the DB in memory saved on disk')
 
-    def update(self):  # TODO change the order of stuff for better logging
+    def update(self):
         """Looks at the hourly Genie Top 200 and adds new songs to the database.
 
         In order to be added by this method, a song must satisfy the following
@@ -333,12 +333,18 @@ class SongDB(object):
         Songs that don't meet these requirements, or have not charted, can be
         tracked by calling the add_from_songid() or add_from_songinfo methods.
         """
-        tracking = self.tracking
+        tracking = self.count_tracking()
         resume_tracking = []
         to_add = []
 
         with requests.Session() as session:
-            for song in scrape_top200():
+            try:
+                fetched_songs = scrape_top200(session)
+            except (requests.ConnectionError, requests.HTTPError):
+                logging.error('Request to genie.co.kr for songs to fetch '
+                              'failed. No songs will be added')
+                return
+            for song in fetched_songs:
                 # skip blacklisted songs
                 if song['id'] in self.blacklist:
                     logging.debug('Skipped: blacklisted (%s by %s)',
@@ -361,16 +367,17 @@ class SongDB(object):
                     page = session.get(ALBUMURL,
                                        params={'axnm': song['album_id']})
                 except (requests.ConnectionError, requests.HTTPError):
-                    logging.error('Request to genie.co.kr for album ID %s failed. '
-                                  'Song ID %s will not be added',
-                                  song['album_id'], song['id'])
+                    logging.error(
+                        'Request to genie.co.kr for album ID %s failed. '
+                        'Song ID %s will not be added',
+                        song['album_id'], song['id'])
                     continue
                 albuminfo = scrape_albuminfo(page.text)
-                is_korean, is_title = scrape_requirements(page.text, song['id'])
+                requirements = scrape_requirements(page.text, song['id'])
                 logging.debug('Info fetched for assessment (%s by %s)',
                               song['title'], song['artist'])
                 # check requirements and add song
-                if is_korean and is_title:
+                if all(requirements):
                     tracking += 1
                     songinfo = {'id': song['id'],
                                 'title': song['title'],
@@ -389,8 +396,7 @@ class SongDB(object):
 
         for songid in resume_tracking:
             self[songid].is_tracking = True
-        if len(resume_tracking):
-            logging.debug('%d songs: tracking resumed', len(resume_tracking))
+        logging.debug('%d songs: tracking resumed', len(resume_tracking))
         for songinfo in to_add:
             self.add_from_songinfo(songinfo)
         logging.debug('%d songs: added to the database', len(to_add))
