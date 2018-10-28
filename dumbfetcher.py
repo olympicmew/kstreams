@@ -1,4 +1,4 @@
-#!/home/ubuntu/venv-kstreams/bin/python3
+#!/home/olympicmew/dev/kstreams/venv-kstreams/bin/python3
 # -*- coding: utf-8 -*-
 
 """
@@ -17,6 +17,11 @@ if __name__ == '__main__':
     parser.add_argument('-v', '--verbose', action='count')
     args = parser.parse_args()
 
+    if args.path:
+        path = args.path
+    else:
+        path = 'db'
+
     if args.verbose >= 2:
         loglevel = logging.DEBUG
         handlers = [logging.FileHandler('kstreams.log'),
@@ -31,16 +36,16 @@ if __name__ == '__main__':
     logging.basicConfig(level=loglevel, handlers=handlers)
 
     if args.mode == 'init':
-        kstreams.init_db('db')
+        kstreams.init_db(path)
     elif args.mode == 'update':
-        db = kstreams.SongDB('db')
+        db = kstreams.SongDB(path)
         db.update()
         db.save()
     elif args.mode == 'update-newest':
-        db = kstreams.SongDB('db')
+        db = kstreams.SongDB(path)
         db.update(fetch_newest=True)
         db.save()
     elif args.mode == 'fetch':
-        db = kstreams.SongDB('db')
+        db = kstreams.SongDB(path)
         db.fetch()
         db.save()
