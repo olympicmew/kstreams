@@ -78,7 +78,7 @@ class Song(object):
         return self._info['minute']
 
     def fetch(self):
-        """Fetches the current total play count from Genie and stores it."""
+        """Fetches and stores the current total play count from Genie."""
         # scraping code
         try:
             page = requests.get(SONGURL, {'xgnm': self.id})
@@ -202,15 +202,16 @@ class SongDB(object):
         """Returns a new SongDB object.
 
         Args:
-            path: the path to the directory where the file structure of the
-                database is located. Use init_db() to initialize a new database.
+            path: the path to the directory where the file structure of
+                the database is located. Use init_db() to initialize a
+                new database.
 
         Returns:
             A SongDB instance pointing to the database found in the path.
 
         Raises:
-            FileNotFoundError: a file or directory required by the database has
-                not been found.
+            FileNotFoundError: a file or directory required by the
+                database has not been found.
         """
         self.path = path
         self.quota = 3540  # TODO make it configurable in the settings
@@ -250,10 +251,11 @@ class SongDB(object):
         """Stops n currently tracking songs from being tracked.
 
         The songs are chosen based on their streaming performance.
-        Specifically, the n songs with the least average plays/hour in the last
-        10 days will stop being tracked. The are not removed from the database,
-        and their tracking can be resumed if they are found again in the hourly
-        Top 200 in a future call to SongDB.update().
+        Specifically, the n songs with the least average plays/hour in
+        the last 10 days will stop being tracked. The are not removed
+        from the database, and their tracking can be resumed if they are
+        found again in the hourly Top 200 in a future call
+        to SongDB.update().
 
         Args:
             n: the number of songs to be pruned.
@@ -268,7 +270,7 @@ class SongDB(object):
         logging.info('Disabled tracking of %d songs', min(n, performance))
 
     def add_from_songid(self, songid):
-        """Fetches metadata for the song ID provided and adds it to the database."""
+        """Fetches metadata and adds the song provided to the database."""
         songinfo = scrape_songinfo(songid)
         self.add_from_songinfo(songinfo)
 
@@ -296,9 +298,9 @@ class SongDB(object):
     def load(self):
         """Loads the song metadata and the blacklist in memory.
 
-        This is called by the SongDB constructor, but can also be called later
-        if one wants to revert the state of the SongDB object to what it was
-        after the last call to SongDB.save().
+        This is called by the SongDB constructor, but can also be called
+        later if one wants to revert the state of the SongDB object to
+        what it was after the last call to SongDB.save().
         """
         with open(self._jsonpath, 'r') as f:
             self._songs = json.load(f)
@@ -309,7 +311,8 @@ class SongDB(object):
     def save(self):  # TODO make JSON formatting configurable
         """Saves the current state of the song metadata and the blacklist.
 
-        This is generally called after a call to SongDB.update() or fetch().
+        This is generally called after a call to SongDB.update()
+        or fetch().
         """
         with open(self._jsonpath, 'w') as f:
             json.dump(self._songs, f, indent=4, ensure_ascii=False)
@@ -455,10 +458,11 @@ class SongDB(object):
         """Calls Song.fetch() for the songs scheduled for the given minute.
 
         Args:
-            minute: the minute for which the fetching must be performed. All
-                songs that have the given minute in their minute attribute will
-                be fetched. The argument is optional, and it defaults to the
-                current minute as provided by the system clock.
+            minute: the minute for which the fetching must be performed.
+                All songs that have the given minute in their minute
+                attribute will be fetched. The argument is optional, and
+                it defaults to the current minute as provided by the
+                system clock.
         """
         to_fetch = []
         for song in self:
