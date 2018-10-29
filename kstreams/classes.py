@@ -303,9 +303,9 @@ class SongDB(object):
         later if one wants to revert the state of the SongDB object to
         what it was after the last call to SongDB.save().
         """
-        with open(self._json_path, 'r') as f:
+        with open(self._json_path, 'r', encoding='utf-8') as f:
             self._songs = json.load(f)
-        with open(self._blacklist_path, 'r') as f:
+        with open(self._blacklist_path, 'r', encoding='utf-8') as f:
             self.blacklist = json.load(f)
         logging.info('Song metadata DB and blacklist loaded')
 
@@ -315,9 +315,9 @@ class SongDB(object):
         This is generally called after a call to SongDB.update()
         or fetch().
         """
-        with open(self._json_path, 'w') as f:
+        with open(self._json_path, 'w', encoding='utf-8') as f:
             json.dump(self._songs, f, indent=4, ensure_ascii=False)
-        with open(self._blacklist_path, 'w') as f:
+        with open(self._blacklist_path, 'w', encoding='utf-8') as f:
             json.dump(self.blacklist, f, indent=0)
         logging.info('Changes to the DB in memory saved on disk')
 
@@ -501,9 +501,9 @@ def init_db(path):
     blacklist_path = os.path.join(path, 'blacklist.json')
     if not os.path.isdir(path):
         os.makedirs(path)
-    with open(json_path, 'w') as f:
+    with open(json_path, 'w', encoding='utf-8') as f:
         json.dump({}, f)
-    with open(blacklist_path, 'w') as f:
+    with open(blacklist_path, 'w', encoding='utf-8') as f:
         json.dump([], f)
     return SongDB(path)
 
