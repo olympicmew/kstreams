@@ -13,7 +13,8 @@ def interpolate(s):
     mask = s.reindex(new_index, method='bfill', tolerance='1h').isnull()
     interp = pd.concat([s, pd.DataFrame(np.nan, index=new_index,
                                         columns=s.columns)]).sort_index()
-    interp = interp.interpolate(method='index').reindex(new_index)
+    interp = interp.interpolate(method='index').drop_duplicates()
+    interp = interp.reindex(new_index)
     interp[mask] = None
     return interp
 
