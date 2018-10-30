@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="kstreams",
-    version="0.1",
+    version="0.4.1",
     author="olympicmew",
     author_email="olympicmew@gmail.com",
     description="Create and maintain a database of k-pop streaming statistics",
