@@ -10,6 +10,7 @@ if __name__ == '__main__':
     import logging
     import argparse
     import kstreams
+    import sys
 
     parser = argparse.ArgumentParser()
     parser.add_argument('mode',
@@ -50,3 +51,4 @@ if __name__ == '__main__':
         db = kstreams.SongDB(path)
         db.fetch()
         db.save()
+    sys.exit()
