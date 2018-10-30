@@ -21,4 +21,6 @@ setuptools.setup(
         "Topic :: Scientific/Engineering :: Information Analysis",
         "Topic :: Software Development :: Libraries :: Python Modules"
     ],
+    zip_safe=False,
+    install_requires=['requests', 'lxml', 'beautifulsoup4', 'arrow', 'pandas']
 )
